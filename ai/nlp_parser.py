@@ -245,7 +245,9 @@ class NLPParser:
         # 1. Determine Type
         income_keywords = [
             "masuk", "terima", "dapat", "dapet", "fee", "gaji", "income", "klien", "client",
-            "proyek", "project", "invoice", "transferan", "upwork", "fiverr", "cair", "received", "pemasukan"
+            "proyek", "project", "invoice", "transferan", "upwork", "fiverr", "cair", "received",
+            "pemasukan", "pemasukkan", "penghasilan", "pendapatan", "omset", "omzet", "bayaran",
+            "dibayar", "gajian", "cairkan", "wd", "withdraw", "hasil"
         ]
         is_income = any(kw in text_lower for kw in income_keywords)
         tx_type = TransactionType.INCOME if is_income else TransactionType.EXPENSE
