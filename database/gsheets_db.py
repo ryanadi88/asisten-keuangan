@@ -189,10 +189,23 @@ class GoogleSheetsBackend(StorageBackend):
         if self._client is not None:
             return self._client
 
+        # 1. Check if JSON content is provided directly in environment variable
+        env_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+        if env_json and env_json.strip().startswith("{"):
+            try:
+                info = json.loads(env_json.strip())
+                creds = Credentials.from_service_account_info(info, scopes=SCOPES)
+                self._client = gspread.authorize(creds)
+                logger.info("Loaded Google Sheets credentials from GOOGLE_SERVICE_ACCOUNT_JSON environment variable.")
+                return self._client
+            except Exception as e:
+                logger.warning("Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON env variable: %s", e)
+
+        # 2. Fallback to reading JSON credentials file
         if not os.path.exists(self.credentials_file):
             raise FileNotFoundError(
                 f"Google Sheets credentials file '{self.credentials_file}' not found. "
-                "Please provide a valid service account JSON file or switch DB_BACKEND to 'sqlite'."
+                "Please provide credentials.json or set GOOGLE_SERVICE_ACCOUNT_JSON environment variable."
             )
 
         creds = Credentials.from_service_account_file(
