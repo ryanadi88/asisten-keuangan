@@ -3,6 +3,7 @@ Main Application Entrypoint for Freelance AI Financial Engine.
 Initializes Database, Telegram Bot, Handlers, and Automated Schedulers.
 """
 
+import os
 import sys
 import asyncio
 import logging
