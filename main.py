@@ -273,8 +273,8 @@ async def main():
         settings.DAILY_CHECKIN_MINUTE,
     )
 
-    # 4. Start Cloud Web Health Check Server (if PORT is set by Render/Koyeb)
-    port_env = os.environ.get("PORT")
+    # 4. Start Cloud Web Health Check Server (Render / Koyeb / Railway)
+    port_env = os.environ.get("PORT", "8000")
     health_server = None
     if port_env:
         try:
@@ -295,7 +295,7 @@ async def main():
                 await writer.wait_closed()
 
             health_server = await asyncio.start_server(handle_health_ping, "0.0.0.0", port)
-            logger.info("🌐 Web health check server listening on 0.0.0.0:%d for Render 24/7 hosting.", port)
+            logger.info("🌐 Web health check server listening on 0.0.0.0:%d for 24/7 cloud hosting.", port)
         except Exception as e:
             logger.warning("Could not start cloud health server on port %s: %s", port_env, e)
 
