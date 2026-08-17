@@ -383,7 +383,7 @@ class GoogleSheetsBackend(StorageBackend):
             tx.receipt_url or "",
             tx.notes or "",
         ]
-        ws.append_row(row, value_input_option="USER_ENTERED", table_range="A1")
+        ws.append_row(row, value_input_option="USER_ENTERED")
         return Transaction(
             id=tx_id,
             user_id=tx.user_id,
