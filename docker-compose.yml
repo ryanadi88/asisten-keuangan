@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  financial-engine-bot:
+    build: .
+    container_name: freelance_ai_finance_bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./credentials.json:/app/credentials.json:ro
