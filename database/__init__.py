@@ -35,12 +35,13 @@ def get_storage(force_fresh: bool = False) -> StorageBackend:
         try:
             from database.gsheets_db import GoogleSheetsBackend
             _storage_instance = GoogleSheetsBackend()
-            logger.info("Using Google Sheets Storage Backend")
+            logger.info("Successfully connected and initialized Google Sheets Storage Backend.")
             return _storage_instance
         except Exception as e:
             logger.error(
-                "Failed to initialize Google Sheets backend (%s). Falling back to SQLite.", e, exc_info=True
+                "Failed to initialize Google Sheets backend (%s). Using SQLite temporarily without caching.", e, exc_info=True
             )
+            return SQLiteBackend()
 
     _storage_instance = SQLiteBackend()
     logger.info("Using SQLite Storage Backend: %s", settings.SQLITE_DB_PATH)
