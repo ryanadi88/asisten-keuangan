@@ -371,10 +371,11 @@ class GoogleSheetsBackend(StorageBackend):
         ws_name = "Income" if tx.type == TransactionType.INCOME else "Expenses"
         ws = sh.worksheet(ws_name)
         tx_id = str(uuid.uuid4())[:8]
+        ts_clean = tx.timestamp.strftime("%Y-%m-%d %H:%M:%S")
         row = [
             tx_id,
             str(tx.user_id),
-            tx.timestamp.isoformat(),
+            ts_clean,
             tx.type.value,
             tx.category.value,
             float(tx.amount),
@@ -382,7 +383,7 @@ class GoogleSheetsBackend(StorageBackend):
             tx.receipt_url or "",
             tx.notes or "",
         ]
-        ws.append_row(row)
+        ws.append_row(row, value_input_option="USER_ENTERED", table_range="A1")
         return Transaction(
             id=tx_id,
             user_id=tx.user_id,
@@ -398,6 +399,17 @@ class GoogleSheetsBackend(StorageBackend):
     async def add_transaction(self, tx: TransactionCreate) -> Transaction:
         return await asyncio.to_thread(self._sync_add_transaction, tx)
 
+    @staticmethod
+    def _parse_timestamp(ts_val: Any) -> datetime:
+        val_str = str(ts_val).strip()
+        try:
+            return datetime.fromisoformat(val_str)
+        except Exception:
+            try:
+                return datetime.strptime(val_str, "%Y-%m-%d %H:%M:%S")
+            except Exception:
+                return datetime.now()
+
     def _sync_get_transaction_by_id(self, tx_id: str, user_id: int) -> Optional[Transaction]:
         sh = self._get_spreadsheet()
         for ws_name in ["Expenses", "Income"]:
@@ -409,7 +421,7 @@ class GoogleSheetsBackend(StorageBackend):
                         return Transaction(
                             id=str(r["id"]),
                             user_id=int(r["user_id"]),
-                            timestamp=datetime.fromisoformat(str(r["timestamp"])),
+                            timestamp=self._parse_timestamp(r.get("timestamp")),
                             type=TransactionType(r["type"]),
                             category=Category(r["category"]),
                             amount=float(r["amount"]),
@@ -418,7 +430,7 @@ class GoogleSheetsBackend(StorageBackend):
                             notes=str(r.get("notes", "")) or None,
                         )
             except Exception as e:
-                logger.warning("Error searching in %s: %s", ws_name, e)
+                logger.warning("Error searching transaction %s in %s: %s", tx_id, ws_name, e)
         return None
 
     async def get_transaction_by_id(self, tx_id: str, user_id: int) -> Optional[Transaction]:
@@ -429,14 +441,13 @@ class GoogleSheetsBackend(StorageBackend):
         for ws_name in ["Expenses", "Income"]:
             try:
                 ws = sh.worksheet(ws_name)
-                cell = ws.find(tx_id)
-                if cell:
-                    row_vals = ws.row_values(cell.row)
-                    if len(row_vals) > 1 and int(row_vals[1]) == user_id:
-                        ws.delete_rows(cell.row)
+                records = ws.get_all_records()
+                for i, r in enumerate(records, start=2):
+                    if str(r.get("id")) == str(tx_id) and int(r.get("user_id", 0)) == user_id:
+                        ws.delete_rows(i)
                         return True
             except Exception as e:
-                logger.warning("Error deleting in %s: %s", ws_name, e)
+                logger.warning("Error deleting transaction %s in %s: %s", tx_id, ws_name, e)
         return False
 
     async def delete_transaction(self, tx_id: str, user_id: int) -> bool:
@@ -470,7 +481,7 @@ class GoogleSheetsBackend(StorageBackend):
                             Transaction(
                                 id=str(r.get("id")),
                                 user_id=int(r.get("user_id")),
-                                timestamp=datetime.fromisoformat(ts),
+                                timestamp=self._parse_timestamp(ts),
                                 type=TransactionType(r.get("type")),
                                 category=Category(r.get("category")),
                                 amount=amount_val,
