@@ -105,32 +105,36 @@ def set_webhook_url():
 @app.route("/status_db", methods=["GET"])
 def check_db_status():
     """Diagnostic route to verify database backend and Google Sheets connection."""
+    from database import reset_storage
+    reset_storage()
+
     backend_type = settings.DB_BACKEND
     creds_file = settings.GOOGLE_SHEETS_CREDENTIALS_FILE
     creds_exist = os.path.exists(creds_file) or os.path.exists(os.path.join(project_dir, creds_file))
 
-    storage = get_storage()
-    backend_class = type(storage).__name__
-
     details = {
         "configured_backend_in_env": backend_type,
-        "active_backend_class": backend_class,
         "credentials_file": creds_file,
         "credentials_file_found": creds_exist,
         "spreadsheet_target": settings.GOOGLE_SPREADSHEET_KEY,
     }
 
-    if backend_class == "GoogleSheetsBackend":
-        try:
-            client = storage._get_client()
-            sheet = storage._get_spreadsheet()
-            details["google_sheets_status"] = "CONNECTED_SUCCESS"
-            details["spreadsheet_title"] = sheet.title
-            details["spreadsheet_id"] = sheet.id
-        except Exception as e:
-            details["google_sheets_status"] = "ERROR_CONNECTING"
-            details["error_detail"] = str(e)
-    else:
-        details["note"] = "Bot is currently using SQLite. If you want Google Sheets, verify .env has DB_BACKEND=gsheets and credentials.json is valid."
+    # Attempt to initialize Google Sheets directly
+    try:
+        from database.gsheets_db import GoogleSheetsBackend
+        gs_backend = GoogleSheetsBackend()
+        client = gs_backend._get_client()
+        sheet = gs_backend._get_spreadsheet()
+        
+        details["google_sheets_status"] = "CONNECTED_SUCCESS"
+        details["spreadsheet_title"] = sheet.title
+        details["spreadsheet_id"] = sheet.id
+        details["worksheets_found"] = [ws.title for ws in sheet.worksheets()]
+        details["active_backend_class"] = "GoogleSheetsBackend"
+    except Exception as e:
+        details["google_sheets_status"] = "ERROR_CONNECTING"
+        details["error_type"] = type(e).__name__
+        details["error_detail"] = str(e)
+        details["active_backend_class"] = type(get_storage()).__name__
 
     return jsonify(details)
