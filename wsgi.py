@@ -19,6 +19,13 @@ os.chdir(project_dir)
 from dotenv import load_dotenv
 load_dotenv(os.path.join(project_dir, ".env"))
 
+# Auto-detect and configure PythonAnywhere proxy for free accounts
+if "PYTHONANYWHERE_DOMAIN" in os.environ or "PYTHONANYWHERE_SITE" in os.environ or os.path.exists("/var/www"):
+    os.environ["HTTP_PROXY"] = "http://proxy.server:3128"
+    os.environ["HTTPS_PROXY"] = "http://proxy.server:3128"
+    os.environ["http_proxy"] = "http://proxy.server:3128"
+    os.environ["https_proxy"] = "http://proxy.server:3128"
+
 from config import settings
 from database import get_storage
 from main import create_bot_application

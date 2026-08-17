@@ -107,13 +107,29 @@ async def scheduled_monthly_report(app: Application) -> None:
 
 
 def create_bot_application() -> Application:
-    """Build and configure the Telegram Bot Application."""
+    """Build and configure the Telegram Bot Application with proxy support for PythonAnywhere."""
     if not settings.TELEGRAM_BOT_TOKEN:
         logger.warning(
             "TELEGRAM_BOT_TOKEN is empty. Set it in .env file before running in production."
         )
 
+    # Auto-detect PythonAnywhere free tier proxy
+    if "PYTHONANYWHERE_DOMAIN" in os.environ or "PYTHONANYWHERE_SITE" in os.environ or os.path.exists("/var/www"):
+        os.environ.setdefault("HTTP_PROXY", "http://proxy.server:3128")
+        os.environ.setdefault("HTTPS_PROXY", "http://proxy.server:3128")
+        os.environ.setdefault("http_proxy", "http://proxy.server:3128")
+        os.environ.setdefault("https_proxy", "http://proxy.server:3128")
+
     builder = Application.builder().token(settings.TELEGRAM_BOT_TOKEN or "DUMMY_TOKEN_FOR_TESTING")
+
+    proxy_url = os.environ.get("HTTPS_PROXY") or os.environ.get("HTTP_PROXY")
+    if proxy_url:
+        try:
+            builder = builder.proxy(proxy_url).get_updates_proxy(proxy_url)
+            logger.info("Configured Telegram Bot with proxy: %s", proxy_url)
+        except Exception as e:
+            logger.warning("Could not set proxy on builder: %s", e)
+
     app = builder.build()
 
     # 1. Core Command Handlers
