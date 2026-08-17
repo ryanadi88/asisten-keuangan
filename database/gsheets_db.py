@@ -11,7 +11,7 @@ import logging
 import asyncio
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Any, Dict
 
 import gspread
 from google.oauth2.service_account import Credentials
