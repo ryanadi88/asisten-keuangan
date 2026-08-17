@@ -202,17 +202,25 @@ class GoogleSheetsBackend(StorageBackend):
                 logger.warning("Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON env variable: %s", e)
 
         # 2. Fallback to reading JSON credentials file
-        if not os.path.exists(self.credentials_file):
+        creds_path = self.credentials_file
+        if not os.path.isabs(creds_path):
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            candidate = os.path.join(project_root, creds_path)
+            if os.path.exists(candidate):
+                creds_path = candidate
+
+        if not os.path.exists(creds_path):
             raise FileNotFoundError(
-                f"Google Sheets credentials file '{self.credentials_file}' not found. "
-                "Please provide credentials.json or set GOOGLE_SERVICE_ACCOUNT_JSON environment variable."
+                f"Google Sheets credentials file '{self.credentials_file}' (checked path: '{creds_path}') not found. "
+                "Please provide credentials.json in project root or set GOOGLE_SERVICE_ACCOUNT_JSON environment variable."
             )
 
         creds = Credentials.from_service_account_file(
-            self.credentials_file,
+            creds_path,
             scopes=SCOPES,
         )
         self._client = gspread.authorize(creds)
+        logger.info("Successfully authorized Google Sheets client from %s", creds_path)
         return self._client
 
     def _get_spreadsheet(self) -> gspread.Spreadsheet:
